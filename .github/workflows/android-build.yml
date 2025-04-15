@@ -37,15 +37,15 @@ jobs:
         run: |
           npm install --legacy-peer-deps
 
-
-
       - name: Create Android directory structure
         run: |
           mkdir -p android/app
 
       - name: Generate debug keystore with proper alias
         run: |
-          rm -f android/app/debug.keystore  #  supprimer l'ancien keystore- Ajoute cette
+          # Supprimer l'ancien keystore s'il existe
+          if [ -f android/app/debug.keystore ]; then rm -f android/app/debug.keystore; fi
+          # Générer un nouveau keystore
           keytool -genkeypair \
             -v \
             -keystore android/app/debug.keystore \
@@ -57,18 +57,24 @@ jobs:
             -validity 10000 \
             -dname "CN=Android Debug,O=Android,C=US" \
             -deststoretype pkcs12
+          # Vérification que le keystore a été créé correctement
+          keytool -list -v \
+            -keystore android/app/debug.keystore \
+            -alias androiddebugkey \
+            -storepass android
 
+      - name: Clean previous builds (Optional)
+        run: |
+          cd android
+          ./gradlew clean
 
       - name: Build APK
         run: |
           cd android
-          ./gradlew assembleDebug \
-            --no-daemon \
-            --stacktrace \
-            --info
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4  # <--- UTILISEZ v4
+        uses: actions/upload-artifact@v4
         with:
           name: debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
